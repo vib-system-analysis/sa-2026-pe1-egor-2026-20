@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_PlantAssessment"
+  targetNamespace="https://example.org/plant-assessment">
+  <bpmn:collaboration id="Collaboration_PlantAssessment">
+    <bpmn:participant id="Participant_PlantAssessment" name="Первичная оценка симптома растения" processRef="Process_PlantAssessment" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_PlantAssessment" name="Первичная оценка симптомов по фото — предварительная реконструкция as-is" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_PlantAssessment">
+      <bpmn:lane id="Lane_Requester" name="Садовод / работник (точная роль требует проверки)">
+        <bpmn:flowNodeRef>StartEvent_Symptom</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NoticeSymptom</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_TakePhoto</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RetakePhoto</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SubmitPhoto</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AssessResult</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ContextSufficient</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ChooseNextStep</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_NextStep</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_App" name="Уже используемое приложение">
+        <bpmn:flowNodeRef>Task_ClassifyPhoto</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Staff" name="Сотрудник питомника (при необходимости; маршрут не подтверждён)">
+        <bpmn:flowNodeRef>Task_ConsultStaff</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AddContext</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="StartEvent_Symptom" name="Симптом замечен">
+      <bpmn:outgoing>Flow_Start_Notice</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Task_NoticeSymptom" name="Определить, что беспокоит">
+      <bpmn:incoming>Flow_Start_Notice</bpmn:incoming>
+      <bpmn:outgoing>Flow_Notice_Photo</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_TakePhoto" name="Сфотографировать растение или симптом">
+      <bpmn:incoming>Flow_Notice_Photo</bpmn:incoming>
+      <bpmn:incoming>Flow_Retake_Photo</bpmn:incoming>
+      <bpmn:outgoing>Flow_Photo_Submit</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_RetakePhoto" name="Изменить условия или кадр и переснять">
+      <bpmn:incoming>Flow_Context_Image</bpmn:incoming>
+      <bpmn:outgoing>Flow_Retake_Photo</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_SubmitPhoto" name="Передать снимок в приложение">
+      <bpmn:incoming>Flow_Photo_Submit</bpmn:incoming>
+      <bpmn:outgoing>Flow_Submit_Classify</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_ClassifyPhoto" name="Получить предварительную классификацию">
+      <bpmn:incoming>Flow_Submit_Classify</bpmn:incoming>
+      <bpmn:outgoing>Flow_Classify_Assess</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_AssessResult" name="Оценить результат с учётом растения, условий и ограничений снимка">
+      <bpmn:incoming>Flow_Classify_Assess</bpmn:incoming>
+      <bpmn:incoming>Flow_Context_Assess</bpmn:incoming>
+      <bpmn:outgoing>Flow_Assess_Context</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_ContextSufficient" name="Можно выбрать следующий шаг по снимку и контексту?" default="Flow_Context_No">
+      <bpmn:incoming>Flow_Assess_Context</bpmn:incoming>
+      <bpmn:outgoing>Flow_Context_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Context_No</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Context_Image</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Task_ChooseNextStep" name="Выбрать следующий шаг или обозначить неопределённость">
+      <bpmn:incoming>Flow_Context_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_Decide_End</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="EndEvent_NextStep" name="Следующий шаг выбран">
+      <bpmn:incoming>Flow_Decide_End</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:task id="Task_ConsultStaff" name="Уточнить ситуацию у сотрудника питомника">
+      <bpmn:incoming>Flow_Context_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_Consult_Context</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_AddContext" name="Добавить сведения и повторно оценить гипотезу">
+      <bpmn:incoming>Flow_Consult_Context</bpmn:incoming>
+      <bpmn:outgoing>Flow_Context_Assess</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:sequenceFlow id="Flow_Start_Notice" sourceRef="StartEvent_Symptom" targetRef="Task_NoticeSymptom" />
+    <bpmn:sequenceFlow id="Flow_Notice_Photo" sourceRef="Task_NoticeSymptom" targetRef="Task_TakePhoto" />
+    <bpmn:sequenceFlow id="Flow_Retake_Photo" sourceRef="Task_RetakePhoto" targetRef="Task_TakePhoto" />
+    <bpmn:sequenceFlow id="Flow_Photo_Submit" sourceRef="Task_TakePhoto" targetRef="Task_SubmitPhoto" />
+    <bpmn:sequenceFlow id="Flow_Submit_Classify" sourceRef="Task_SubmitPhoto" targetRef="Task_ClassifyPhoto" />
+    <bpmn:sequenceFlow id="Flow_Classify_Assess" sourceRef="Task_ClassifyPhoto" targetRef="Task_AssessResult" />
+    <bpmn:sequenceFlow id="Flow_Assess_Context" sourceRef="Task_AssessResult" targetRef="Gateway_ContextSufficient" />
+    <bpmn:sequenceFlow id="Flow_Context_Yes" name="Да" sourceRef="Gateway_ContextSufficient" targetRef="Task_ChooseNextStep">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">Человек считает данных достаточно</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Context_Image" name="Нужен снимок получше" sourceRef="Gateway_ContextSufficient" targetRef="Task_RetakePhoto">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">Снимок не позволяет оценить симптом</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Context_No" name="Нет / есть сомнение" sourceRef="Gateway_ContextSufficient" targetRef="Task_ConsultStaff">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">Нужны уточнения или помощь</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Consult_Context" sourceRef="Task_ConsultStaff" targetRef="Task_AddContext" />
+    <bpmn:sequenceFlow id="Flow_Context_Assess" sourceRef="Task_AddContext" targetRef="Task_AssessResult" />
+    <bpmn:sequenceFlow id="Flow_Decide_End" sourceRef="Task_ChooseNextStep" targetRef="EndEvent_NextStep" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_PlantAssessment">
+    <bpmndi:BPMNPlane id="BPMNPlane_PlantAssessment" bpmnElement="Collaboration_PlantAssessment">
+      <bpmndi:BPMNShape id="Participant_PlantAssessment_di" bpmnElement="Participant_PlantAssessment" isHorizontal="true">
+        <dc:Bounds x="80" y="100" width="1590" height="700" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Requester_di" bpmnElement="Lane_Requester" isHorizontal="true">
+        <dc:Bounds x="110" y="100" width="1560" height="300" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_App_di" bpmnElement="Lane_App" isHorizontal="true">
+        <dc:Bounds x="110" y="400" width="1560" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Staff_di" bpmnElement="Lane_Staff" isHorizontal="true">
+        <dc:Bounds x="110" y="580" width="1560" height="220" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_Symptom_di" bpmnElement="StartEvent_Symptom">
+        <dc:Bounds x="160" y="225" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NoticeSymptom_di" bpmnElement="Task_NoticeSymptom">
+        <dc:Bounds x="230" y="208" width="150" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_TakePhoto_di" bpmnElement="Task_TakePhoto">
+        <dc:Bounds x="420" y="208" width="155" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RetakePhoto_di" bpmnElement="Task_RetakePhoto">
+        <dc:Bounds x="650" y="310" width="190" height="62" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SubmitPhoto_di" bpmnElement="Task_SubmitPhoto">
+        <dc:Bounds x="680" y="208" width="155" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ClassifyPhoto_di" bpmnElement="Task_ClassifyPhoto">
+        <dc:Bounds x="900" y="448" width="195" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AssessResult_di" bpmnElement="Task_AssessResult">
+        <dc:Bounds x="1120" y="208" width="205" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ContextSufficient_di" bpmnElement="Gateway_ContextSufficient" isMarkerVisible="true">
+        <dc:Bounds x="1370" y="218" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ChooseNextStep_di" bpmnElement="Task_ChooseNextStep">
+        <dc:Bounds x="1460" y="185" width="150" height="76" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_NextStep_di" bpmnElement="EndEvent_NextStep">
+        <dc:Bounds x="1618" y="205" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ConsultStaff_di" bpmnElement="Task_ConsultStaff">
+        <dc:Bounds x="1300" y="620" width="170" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AddContext_di" bpmnElement="Task_AddContext">
+        <dc:Bounds x="1080" y="620" width="190" height="70" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_Start_Notice_di" bpmnElement="Flow_Start_Notice">
+        <di:waypoint x="196" y="243" /><di:waypoint x="230" y="243" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Notice_Photo_di" bpmnElement="Flow_Notice_Photo">
+        <di:waypoint x="380" y="243" /><di:waypoint x="420" y="243" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Retake_Photo_di" bpmnElement="Flow_Retake_Photo">
+        <di:waypoint x="650" y="341" /><di:waypoint x="500" y="341" /><di:waypoint x="500" y="278" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Photo_Submit_di" bpmnElement="Flow_Photo_Submit">
+        <di:waypoint x="575" y="243" /><di:waypoint x="680" y="243" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Submit_Classify_di" bpmnElement="Flow_Submit_Classify">
+        <di:waypoint x="757" y="278" /><di:waypoint x="757" y="485" /><di:waypoint x="900" y="485" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Classify_Assess_di" bpmnElement="Flow_Classify_Assess">
+        <di:waypoint x="1095" y="485" /><di:waypoint x="1222" y="485" /><di:waypoint x="1222" y="278" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Assess_Context_di" bpmnElement="Flow_Assess_Context">
+        <di:waypoint x="1325" y="243" /><di:waypoint x="1370" y="243" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Context_Yes_di" bpmnElement="Flow_Context_Yes">
+        <di:waypoint x="1420" y="243" /><di:waypoint x="1460" y="223" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1425" y="207" width="24" height="18" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Context_Image_di" bpmnElement="Flow_Context_Image">
+        <di:waypoint x="1395" y="268" /><di:waypoint x="1395" y="341" /><di:waypoint x="840" y="341" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1155" y="318" width="165" height="20" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Context_No_di" bpmnElement="Flow_Context_No">
+        <di:waypoint x="1395" y="268" /><di:waypoint x="1395" y="620" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1403" y="280" width="110" height="22" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Consult_Context_di" bpmnElement="Flow_Consult_Context">
+        <di:waypoint x="1300" y="655" /><di:waypoint x="1270" y="655" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Context_Assess_di" bpmnElement="Flow_Context_Assess">
+        <di:waypoint x="1080" y="655" /><di:waypoint x="1045" y="655" /><di:waypoint x="1045" y="243" /><di:waypoint x="1120" y="243" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Decide_End_di" bpmnElement="Flow_Decide_End">
+        <di:waypoint x="1610" y="223" /><di:waypoint x="1618" y="223" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
